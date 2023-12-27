@@ -1,6 +1,6 @@
 from kubernetes import client, config
 
-rule_selectors = {} # Collects all the Prometheus Operators and their rule selectors as a set (namespace, name)
+rule_selectors = {} # Collects all the Prometheus Operators and their rule selectors as a dictonary with (namespace, name), a tuple as the key
 
 def list_all_namespaces():
 
@@ -27,7 +27,7 @@ def get_prometheus_rule_selector(namespaces):
                 print(item)
                 name = item['metadata']['name']        # From the metadata part of each item, get its name
                 rule_selector = item.get('spec', {}).get('ruleSelector', {})   # If spec or ruleSelector doesnt exist then {} is used instead of an exception
-                rule_selectors[(namespace, name)] = rule_selector     # If there was a rule 
+                rule_selectors[(namespace, name)] = rule_selector     # If there was a rule add it to the rule_selector dictonary
 
         except client.exceptions.ApiException as e:
             print(f"An error occurred in namespace {namespace}: {e}")
