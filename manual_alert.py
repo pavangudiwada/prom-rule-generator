@@ -50,7 +50,7 @@ def generate_prometheus_rule():
                         'severity': ss.severity,
                     },
                     'annotations': {
-                        'summary': f'Alert for {ss.alert}',
+                        'summary': ss.summary,
                     },
                 }],
             }],
@@ -66,7 +66,7 @@ def add_alert():
     ss.expr = st.text_input(label="PromQL expression")
     ss.for_duration = st.text_input(label="For duration")
     ss.severity = st.selectbox("Pick one", ["critical", "warning", "info"])
-    ss.summary = st.text_input(label="Summary", value=f"This alert uses {ss.alert}")
+    ss.summary = st.text_input(label="Summary", value=f"Alert for {ss.alert}")
 
 
 def main():
@@ -76,7 +76,7 @@ def main():
             ss[name] = value
 
     
-    st.title("Prometheus Rule Editor")
+    st.title("Prometheus Rule Editor")                  
     add_alert()
 
     
