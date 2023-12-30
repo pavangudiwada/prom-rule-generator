@@ -2,3 +2,4 @@ streamlit
 streamlit-pydantic
 pydantic==1.8.1
 pyyaml
+streamlit_antd_components

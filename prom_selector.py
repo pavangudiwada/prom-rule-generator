@@ -3,21 +3,45 @@ import time
 import streamlit as st
 from streamlit import session_state as ss
 
-def list_all_namespaces():
 
-    # st.toast("Detected K8s Cluster", icon='☸️')
 
-    config.load_kube_config()
-    v1 = client.CoreV1Api()
-    namespaces = v1.list_namespace() # Get all the namespaces
+def get_all_namespaces(v1_client):
 
-    ss.cluster_detected = True
+    try:
+        namespaces = v1_client.list_namespace() # Get all the namespaces
+        ss.cluster_detected = True
+    
+    except Exception as e:
+        print(f"An error occured while detecting namespaces: {e}")
 
     return [namespace.metadata.name for namespace in namespaces.items] # For each namespaces in the list of namespaces get the name found in metadata.name
 
+def get_all_operators(namespaces, custom_objects_client):
 
-def get_prometheus_rule_selector(namespaces):
-    custom_objects_api = client.CustomObjectsApi()
+    all_operators = {}
+
+    for namespace in namespaces:
+        try:
+            prometheus_operator = custom_objects_client.list_namespaced_custom_object(
+                group="monitoring.coreos.com",
+                version="v1",
+                namespace=namespace,
+                plural="prometheuses"
+            )
+
+            if prometheus_operator['items']:
+
+                all_operators[namespace] = prometheus_operator['items']
+            
+        except Exception as e:
+            print(f"An error occurred in namespace {namespace}: {e}")
+
+    return all_operators
+
+
+
+
+def get_prometheus_rule_selector(namespaces, custom_objects_client):
     rule_selectors = {} # Collects all the Prometheus Operators and their rule selectors as a set (namespace, name)
     rule_namespace_selector = {}
 
@@ -40,27 +64,19 @@ def get_prometheus_rule_selector(namespaces):
 
         except client.exceptions.ApiException as e:
             print(f"An error occurred in namespace {namespace}: {e}")
-    # st.toast("Prometheus Operator Detected", icon="👌")
 
     return rule_selectors, rule_namespace_selector
 
-# namespaces = list_all_namespaces()
+def get_namespace_labels(namespace, v1_client):
 
-# rule_selectors = get_prometheus_rule_selector(namespaces)
-# for (namespace, name), selector in rule_selectors.items():
-#     print(f"Namespace: {namespace}, Operator: {name}, Rule Selector: {selector}")
+    try:
+        ns = v1_client.read_namespace(name=namespace)
+        print(ns.metadata.labels)
+        return ns.metadata.labels
+    except client.exceptions.ApiException as e:
+        print(f"An error occurred: {e}")
+        return None
 
-# def get_current_cluster_name():
-#     # Load the kubeconfig file
-#     config.load_kube_config()  # Use config.load_incluster_config() if running inside a cluster
+# get_all_operators(get_all_namespaces(v1_client), custom_objects_client)
 
-#     # Get the current context
-#     current_context = config.list_kube_config_contexts()[1]['context']
-
-#     # The name of the current cluster
-#     cluster_name = current_context['cluster']
-#     return cluster_name
-
-# # Example usage
-# cluster_name = get_current_cluster_name()
-# print(cluster_name)
+# get_namespace_labels('default', v1_client)

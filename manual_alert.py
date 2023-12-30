@@ -3,28 +3,33 @@ from pydantic import BaseModel, Field
 from typing import List, Dict
 import streamlit as st
 from streamlit import session_state as ss
-import streamlit_pydantic as sp
+# import streamlit_pydantic as sp
 import yaml
-from prom_selector import list_all_namespaces, get_prometheus_rule_selector
+from kubernetes import client, config
+from prom_selector import get_all_namespaces, get_all_operators, get_namespace_labels
+import streamlit_antd_components as sac
+
+# Load the Kubernetes configuration globally
 
 
-def display_rule_selectors(namespace, name, selector):
-    st.markdown(f"Rule selector detected in **Namespace**: {namespace} **Name**: {name}")
-    ss.add_rule_selector = st.toggle(key="key_rule_label", label=f'Add Selectors: {selector["matchLabels"]}', value=True)
-    if ss.add_rule_selector:
-        ss.rule_labels = selector["matchLabels"]
-    else:
-        ss.rule_labels = {}
 
-def display_namespace_selectors(namespace, name, selector):
-    st.markdown(f"Namespace selector detected in **Namespace**: {namespace} **Name**: {name}")
-    ss.add_namespace_selector = st.toggle(key="key_rule_namespace", label=f'Add Selectors: {selector["matchLabels"]}', value=True)
-    if ss.add_namespace_selector:
-        inner_dict = selector.get('matchLabels', {})
-        ss.namespace_labels = {"namespace": next(iter(inner_dict.values()), None)}
-        st.markdown(f"Make sure you add **{list(inner_dict.keys())[0]} : {list(inner_dict.values())[0]}** to your {namespace}")
-    else:
-        ss.namespace_labels = {}
+# def display_rule_selectors(namespace, name, selector):
+#     st.markdown(f"Rule selector detected in **Namespace**: {namespace} **Name**: {name}")
+#     ss.add_rule_selector = st.toggle(key="key_rule_label", label=f'Add Selectors: {selector["matchLabels"]}', value=True)
+#     if ss.add_rule_selector:
+#         ss.rule_labels = selector["matchLabels"]
+#     else:
+#         ss.rule_labels = {}
+
+# def display_namespace_selectors(namespace, name, selector):
+#     st.markdown(f"Namespace selector detected in **Namespace**: {namespace} **Name**: {name}")
+#     ss.add_namespace_selector = st.toggle(key="key_rule_namespace", label=f'Add Selectors: {selector["matchLabels"]}', value=True)
+#     if ss.add_namespace_selector:
+#         inner_dict = selector.get('matchLabels', {})
+#         ss.namespace_labels = {"namespace": next(iter(inner_dict.values()), None)}
+#         st.markdown(f"Make sure you add **{list(inner_dict.keys())[0]} : {list(inner_dict.values())[0]}** to your {namespace}")
+#     else:
+#         ss.namespace_labels = {}
 
 
 def generate_prometheus_rule():
@@ -69,40 +74,149 @@ def add_alert():
     ss.summary = st.text_input(label="Summary", value=f"Alert for {ss.alert}")
 
 
+
 def main():
-    initializer = [("cluster_detected", False), ("rule_selectors", {}), ("rule_namespace_selector", {}), ("namespaces", []), ("rule_labels", {}), ("namespace_labels", {}), ("generated_yaml", "")]
+    config.load_kube_config()
+
+    v1_client = client.CoreV1Api()
+    custom_objects_client = client.CustomObjectsApi()
+    initializer = [("cluster_detected", False), ("rule_selectors", {}), ("rule_namespace_selector", {}), ("namespaces", []), ("rule_labels", {}), ("namespace_labels", {}), ("generated_yaml", ""), ("get_operators", {})]
     for (name,value) in initializer:
         if name not in ss:
             ss[name] = value
 
+    # dynamic_menu = generate_menu(v1_client, custom_objects_client)
+    # st.sidebar.write(dynamic_menu)
+
+    # display_sidebar_menu(v1_client, custom_objects_client)
     
     st.title("Prometheus Rule Editor")                  
     add_alert()
 
-    
+
+
+
+    # namespaces = get_all_namespaces(v1_client)
+    # all_operators = get_all_operators(namespaces, custom_objects_client)
+
+    # # Sidebar: List namespaces and operators
+    # with st.sidebar:
+    #     st.title("Namespaces and Operators")
+    #     for namespace, operators in all_operators.items():
+    #         if operators:  # Check if there are operators in the namespace
+    #             with st.expander(namespace):
+    #                 for op in operators:
+    #                     op_name = op['metadata']['name']
+    #                     if st.button(op_name, key=f"{namespace}_{op_name}"):
+    #                         # Store the selected operator in session state
+    #                         ss.selected_operator = op_name
+    #                         # Perform any action based on the operator selection
+
+    # # Main area: Display information based on the selection
+    # if ss.selected_operator:
+    #     st.write(f"You have selected operator: {ss.selected_operator}")
+    #     # Further logic to display details or perform actions based on the selected operator
+
+
+
+    # Initialize session state variables
+    if 'selected_operator' not in ss:
+        ss.selected_operator = None
+    if 'operators_initialized' not in ss:
+        ss.operators_initialized = False
+
+    if not ss.operators_initialized:
+        ss.namespaces = get_all_namespaces(v1_client)
+        ss.all_operators = get_all_operators(ss.namespaces, custom_objects_client)
+        ss.operators_initialized = True
+
+        # Auto-select the first operator, if available
+        for namespace, operators in ss.all_operators.items():
+            if operators:
+                ss.selected_operator = operators[0]['metadata']['name']
+                ss.selected_namespace = namespace
+                ss.rule_labels = get_namespace_labels(namespace, v1_client)  # Fetch labels for the selected namespace
+                break
+
+    # Sidebar: List namespaces and operators
+    with st.sidebar:
+        st.title("Namespaces and Operators")
+        for namespace, operators in ss.all_operators.items():
+            if operators:
+                with st.expander(namespace):
+                    for op in operators:
+                        op_name = op['metadata']['name']
+                        if st.button(op_name, key=f"{namespace}_{op_name}"):
+                            ss.selected_operator = op_name
+                            ss.selected_namespace = namespace
+                            ss.rule_labels = get_namespace_labels(namespace, v1_client)  # Fetch labels for the selected namespace
+
+    # Show warning if no operators are detected
+    if not ss.selected_operator:
+        st.warning("No operators detected.")
+        # Display default rule generator page
+
+    # Main area: Display information based on the selection
+    if ss.selected_operator:
+        st.write(f"You have selected operator: {ss.selected_operator} in namespace {ss.selected_namespace}")
+        # Integrate rule generation with selected operator
+        # generate_prometheus_rule(ss.selected_namespace, ss.rule_labels)
+        generate_prometheus_rule()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    # def
     
     if ss.cluster_detected == False:
-        ss.namespaces = list_all_namespaces()
+        ss.namespaces = get_all_namespaces(v1_client)
 
-    if ss.rule_selectors == {} and ss.rule_namespace_selector == {} and len(ss.namespaces) != 0:
+    if ss.get_operators == False:
+        ss.get_operators = get_all_operators(ss.namespaces)
 
-        ss.rule_selectors, ss.rule_namespace_selector = get_prometheus_rule_selector(ss.namespaces)
-
-        # for (namespace, name), namespace_selector in ss.rule_namespace_selector.items():
-        #     print(f"Namespace: {namespace}, Operator: {name}, Rule Selector: {namespace_selector}")
     else:
-        for (namespace, name), selector in ss.rule_selectors.items():
-            if len(selector) != 0:
-                # st.toast("Rule Selector Detected", icon="🕵️")
-                display_rule_selectors(namespace, name, selector)
+        for operator in ss.get_operators.values():
+            print(operator)
+            
+
+    # if ss.rule_selectors == {} and ss.rule_namespace_selector == {} and len(ss.namespaces) != 0:
+    #     ss.rule_selectors, ss.rule_namespace_selector = get_prometheus_rule_selector(ss.namespaces)
+
+    # else:
+    #     for (namespace, name), selector in ss.rule_selectors.items():
+    #         if len(selector) != 0:
+    #             display_rule_selectors(namespace, name, selector)
                 
-        for (namespace, name), ns_selector in ss.rule_namespace_selector.items():
-            if len(ns_selector) != 0:
-                display_namespace_selectors(namespace, name, ns_selector)
+    #     for (namespace, name), ns_selector in ss.rule_namespace_selector.items():
+    #         if len(ns_selector) != 0:
+    #             display_namespace_selectors(namespace, name, ns_selector)
 
     generate_button = st.button("Generate", on_click=generate_prometheus_rule)
     if ss.generated_yaml:
         st.code(body=ss.generated_yaml, language="yaml")
 
+
+
+
+
+
+
+
 if __name__ == "__main__":
+
     main()
