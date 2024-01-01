@@ -76,7 +76,7 @@ def main():
             ss[name] = value
 
     
-    st.title("Prometheus Rule Editor")                  
+    st.title("PrometheusRule Editor")                  
     add_alert()
 
     
@@ -88,12 +88,9 @@ def main():
 
         ss.rule_selectors, ss.rule_namespace_selector = get_prometheus_rule_selector(ss.namespaces)
 
-        # for (namespace, name), namespace_selector in ss.rule_namespace_selector.items():
-        #     print(f"Namespace: {namespace}, Operator: {name}, Rule Selector: {namespace_selector}")
     else:
         for (namespace, name), selector in ss.rule_selectors.items():
             if len(selector) != 0:
-                # st.toast("Rule Selector Detected", icon="🕵️")
                 display_rule_selectors(namespace, name, selector)
                 
         for (namespace, name), ns_selector in ss.rule_namespace_selector.items():
