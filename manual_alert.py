@@ -1,9 +1,7 @@
 
-from pydantic import BaseModel, Field
 from typing import List, Dict
 import streamlit as st
 from streamlit import session_state as ss
-import streamlit_pydantic as sp
 import yaml
 from prom_selector import list_all_namespaces, get_prometheus_rule_selector
 
