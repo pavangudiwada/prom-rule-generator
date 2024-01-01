@@ -1,4 +1,4 @@
-# PrometheusRule Editor
+# PrometheusRule Generator
 
 A Python based web application to help with creating PrometheusRule custom resources.
 
