@@ -9,28 +9,6 @@ from kubernetes import client, config
 from prom_selector import get_all_namespaces, get_all_operators, get_namespace_labels, get_operator_selectors
 import streamlit_antd_components as sac
 
-# Load the Kubernetes configuration globally
-
-
-
-# def display_rule_selectors(namespace, name, selector):
-#     st.markdown(f"Rule selector detected in **Namespace**: {namespace} **Name**: {name}")
-#     ss.add_rule_selector = st.toggle(key="key_rule_label", label=f'Add Selectors: {selector["matchLabels"]}', value=True)
-    # if ss.add_rule_selector:
-    #     ss.rule_labels = selector["matchLabels"]
-    # else:
-    #     ss.rule_labels = {}
-
-# def display_namespace_selectors(namespace, name, selector):
-#     st.markdown(f"Namespace selector detected in **Namespace**: {namespace} **Name**: {name}")
-#     ss.add_namespace_selector = st.toggle(key="key_rule_namespace", label=f'Add Selectors: {selector["matchLabels"]}', value=True)
-#     if ss.add_namespace_selector:
-#         inner_dict = selector.get('matchLabels', {})
-#         ss.namespace_labels = {"namespace": next(iter(inner_dict.values()), None)}
-#         st.markdown(f"Make sure you add **{list(inner_dict.keys())[0]} : {list(inner_dict.values())[0]}** to your {namespace}")
-#     else:
-#         ss.namespace_labels = {}
-
 
 def generate_prometheus_rule():
     template = {
@@ -84,40 +62,9 @@ def main():
     for (name,value) in initializer:
         if name not in ss:
             ss[name] = value
-
-    # dynamic_menu = generate_menu(v1_client, custom_objects_client)
-    # st.sidebar.write(dynamic_menu)
-
-    # display_sidebar_menu(v1_client, custom_objects_client)
     
     st.title("Prometheus Rule Editor")                  
     add_alert()
-
-
-
-
-    # namespaces = get_all_namespaces(v1_client)
-    # all_operators = get_all_operators(namespaces, custom_objects_client)
-
-    # # Sidebar: List namespaces and operators
-    # with st.sidebar:
-    #     st.title("Namespaces and Operators")
-    #     for namespace, operators in all_operators.items():
-    #         if operators:  # Check if there are operators in the namespace
-    #             with st.expander(namespace):
-    #                 for op in operators:
-    #                     op_name = op['metadata']['name']
-    #                     if st.button(op_name, key=f"{namespace}_{op_name}"):
-    #                         # Store the selected operator in session state
-    #                         ss.selected_operator = op_name
-    #                         # Perform any action based on the operator selection
-
-    # # Main area: Display information based on the selection
-    # if ss.selected_operator:
-    #     st.write(f"You have selected operator: {ss.selected_operator}")
-    #     # Further logic to display details or perform actions based on the selected operator
-
-
 
     # Initialize session state variables
     if 'selected_operator' not in ss:
