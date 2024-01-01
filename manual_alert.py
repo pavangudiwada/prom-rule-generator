@@ -3,7 +3,6 @@ from pydantic import BaseModel, Field
 from typing import List, Dict
 import streamlit as st
 from streamlit import session_state as ss
-# import streamlit_pydantic as sp
 import yaml
 from kubernetes import client, config
 from prom_selector import get_all_namespaces, get_all_operators, get_namespace_labels, get_operator_selectors
@@ -63,7 +62,7 @@ def main():
         if name not in ss:
             ss[name] = value
     
-    st.title("Prometheus Rule Editor")                  
+    st.title("PrometheusRule Generator")                  
     add_alert()
 
     # Initialize session state variables
@@ -97,7 +96,6 @@ def main():
                             ss.selected_operator = op_name
                             ss.selected_namespace = namespace
                             get_operator_selectors(namespace, op, v1_client)
-                            # ss.rule_labels = get_namespace_labels(namespace, v1_client)  # Fetch labels for the selected namespace
 
     # Show warning if no operators are detected
     if not ss.selected_operator:
@@ -112,24 +110,6 @@ def main():
         generate_prometheus_rule()
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    # def
     
     if ss.cluster_detected == False:
         ss.namespaces = get_all_namespaces(v1_client)
@@ -137,31 +117,9 @@ def main():
     if ss.get_operators == False:
         ss.get_operators = get_all_operators(ss.namespaces)
 
-    else:
-        for operator in ss.get_operators.values():
-            print(operator)
-            
-
-    # if ss.rule_selectors == {} and ss.rule_namespace_selector == {} and len(ss.namespaces) != 0:
-    #     ss.rule_selectors, ss.rule_namespace_selector = get_prometheus_rule_selector(ss.namespaces)
-
-    # else:
-    #     for (namespace, name), selector in ss.rule_selectors.items():
-    #         if len(selector) != 0:
-    #             display_rule_selectors(namespace, name, selector)
-                
-    #     for (namespace, name), ns_selector in ss.rule_namespace_selector.items():
-    #         if len(ns_selector) != 0:
-    #             display_namespace_selectors(namespace, name, ns_selector)
-
     generate_button = st.button("Generate", on_click=generate_prometheus_rule)
     if ss.generated_yaml:
         st.code(body=ss.generated_yaml, language="yaml")
-
-
-
-
-
 
 
 

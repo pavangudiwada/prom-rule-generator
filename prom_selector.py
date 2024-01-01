@@ -103,7 +103,6 @@ def get_operator_selectors(namespace, operator, v1_client):
 
         all_labels = get_all_namespace_labels(v1_client)
         if inner_dict.items() not in all_labels.items():
-
             st.warning(f"Please add the label {inner_dict} to atleast one namespace")
 
     except Exception as e:
