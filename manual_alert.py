@@ -6,7 +6,7 @@ from streamlit import session_state as ss
 # import streamlit_pydantic as sp
 import yaml
 from kubernetes import client, config
-from prom_selector import get_all_namespaces, get_all_operators, get_namespace_labels
+from prom_selector import get_all_namespaces, get_all_operators, get_namespace_labels, get_operator_selectors
 import streamlit_antd_components as sac
 
 # Load the Kubernetes configuration globally
@@ -16,10 +16,10 @@ import streamlit_antd_components as sac
 # def display_rule_selectors(namespace, name, selector):
 #     st.markdown(f"Rule selector detected in **Namespace**: {namespace} **Name**: {name}")
 #     ss.add_rule_selector = st.toggle(key="key_rule_label", label=f'Add Selectors: {selector["matchLabels"]}', value=True)
-#     if ss.add_rule_selector:
-#         ss.rule_labels = selector["matchLabels"]
-#     else:
-#         ss.rule_labels = {}
+    # if ss.add_rule_selector:
+    #     ss.rule_labels = selector["matchLabels"]
+    # else:
+    #     ss.rule_labels = {}
 
 # def display_namespace_selectors(namespace, name, selector):
 #     st.markdown(f"Namespace selector detected in **Namespace**: {namespace} **Name**: {name}")
@@ -135,7 +135,7 @@ def main():
             if operators:
                 ss.selected_operator = operators[0]['metadata']['name']
                 ss.selected_namespace = namespace
-                ss.rule_labels = get_namespace_labels(namespace, v1_client)  # Fetch labels for the selected namespace
+                get_operator_selectors(namespace, operators[0], v1_client)
                 break
 
     # Sidebar: List namespaces and operators
@@ -149,7 +149,8 @@ def main():
                         if st.button(op_name, key=f"{namespace}_{op_name}"):
                             ss.selected_operator = op_name
                             ss.selected_namespace = namespace
-                            ss.rule_labels = get_namespace_labels(namespace, v1_client)  # Fetch labels for the selected namespace
+                            get_operator_selectors(namespace, op, v1_client)
+                            # ss.rule_labels = get_namespace_labels(namespace, v1_client)  # Fetch labels for the selected namespace
 
     # Show warning if no operators are detected
     if not ss.selected_operator:

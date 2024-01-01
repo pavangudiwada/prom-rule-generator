@@ -71,12 +71,52 @@ def get_namespace_labels(namespace, v1_client):
 
     try:
         ns = v1_client.read_namespace(name=namespace)
-        print(ns.metadata.labels)
         return ns.metadata.labels
     except client.exceptions.ApiException as e:
         print(f"An error occurred: {e}")
         return None
 
+def get_all_namespace_labels(v1_client):
+
+    try:
+        all_labels = {}
+        for namespace in ss.namespaces:
+            ns_labels = get_all_namespace_labels(namespace, v1_client)
+
+            if ns_labels:
+                all_labels.update()
+            print(f"Namespace{namespace} Labels {all_labels}")
+        return all_labels
+    except Exception as e:
+        print(f"Exception occured while getting all namespace labels")
+
+    return all_labels
+
+def get_operator_selectors(namespace, operator, v1_client):
+    try:
+        rule_labels = operator.get('spec', {}).get('ruleSelector', {})
+        namespace_labels = operator.get('spec', {}).get('ruleNamespaceSelector', {})
+        if rule_labels:
+            ss.rule_labels = rule_labels["matchLabels"]
+        if namespace_labels:
+            inner_dict = namespace_labels.get('matchLabels', {})
+            ss.namespace_labels = {"namespace": next(iter(inner_dict.values()), None)}     
+
+        all_labels = get_all_namespace_labels(v1_client)
+        if inner_dict.items() not in all_labels.items():
+            print(inner_dict.items())
+            print(all_labels.items())
+            st.warning(f"Please add the label {inner_dict} to atleast one namespace")
+
+
+        print(ss.rule_labels, ss.namespace_labels)
+    except Exception as e:
+        print(f"An error {e} occured while getting operator selectors")
+
+    # if ss.add_rule_selector:
+    #     ss.rule_labels = selector["matchLabels"]
+    # else:
+    #     ss.rule_labels = {}
 # get_all_operators(get_all_namespaces(v1_client), custom_objects_client)
 
 # get_namespace_labels('default', v1_client)
