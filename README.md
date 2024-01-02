@@ -32,4 +32,4 @@ streamlit run manual_alert.py
 
 ## Sample
 
-![PrometheusRule Editor in action](./images/demov1.png)
+![PrometheusRule Generator in action](./images/PrometheusRuleGeneratordemo.gif)

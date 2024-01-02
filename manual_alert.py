@@ -14,7 +14,7 @@ def generate_prometheus_rule():
         'apiVersion': 'monitoring.coreos.com/v1',
         'kind': 'PrometheusRule',
         'metadata': {
-            'name': ss.alert,
+            'name': f"{ss.alert}-rule",
             **ss.namespace_labels,
             'labels': {
                 'role': 'alert-rules',
@@ -23,9 +23,9 @@ def generate_prometheus_rule():
         },
         'spec': {
             'groups': [{
-                'name': f'{ss.alert}-rules',
+                'name': f'{ss.group_name}',
                 'rules': [{
-                    'alert': f'{ss.alert}Alert',
+                    'alert': f'{ss.alert}',
                     'expr': f"{ss.expr}",
                     'for': ss.for_duration,
                     'labels': {
@@ -33,6 +33,7 @@ def generate_prometheus_rule():
                     },
                     'annotations': {
                         'summary': ss.summary,
+                        'description' : ss.description,
                     },
                 }],
             }],
@@ -44,11 +45,13 @@ def generate_prometheus_rule():
 
     
 def add_alert():
+    ss.group_name = st.text_input(label="Group Name")
     ss.alert = st.text_input(label="Alert Name")
     ss.expr = st.text_input(label="PromQL expression")
     ss.for_duration = st.text_input(label="For duration")
     ss.severity = st.selectbox("Pick one", ["critical", "warning", "info"])
     ss.summary = st.text_input(label="Summary", value=f"Alert for {ss.alert}")
+    ss.description = st.text_input(label="Description")
 
 
 
@@ -57,7 +60,7 @@ def main():
 
     v1_client = client.CoreV1Api()
     custom_objects_client = client.CustomObjectsApi()
-    initializer = [("cluster_detected", False), ("rule_selectors", {}), ("rule_namespace_selector", {}), ("namespaces", []), ("rule_labels", {}), ("namespace_labels", {}), ("generated_yaml", ""), ("get_operators", {})]
+    initializer = [("cluster_detected", False), ("rule_selectors", {}), ("rule_namespace_selector", {}), ("namespaces", []), ("rule_labels", {}), ("namespace_labels", {}), ("generated_yaml", {}), ("get_operators", {})]
     for (name,value) in initializer:
         if name not in ss:
             ss[name] = value
@@ -79,10 +82,16 @@ def main():
         # Auto-select the first operator, if available
         for namespace, operators in ss.all_operators.items():
             if operators:
-                ss.selected_operator = operators[0]['metadata']['name']
+                ss.selected_operator_name = operators[0]['metadata']['name']
                 ss.selected_namespace = namespace
+                ss.selected_operator = operators[0]
                 get_operator_selectors(namespace, operators[0], v1_client)
                 break
+    else:
+        get_operator_selectors(ss.selected_namespace, ss.selected_operator, v1_client)
+    if ss.no_ns_label:
+        st.warning(f"Please add the label {ss.no_ns_label} to atleast one namespace")
+
 
     # Sidebar: List namespaces and operators
     with st.sidebar:
@@ -90,12 +99,14 @@ def main():
         for namespace, operators in ss.all_operators.items():
             if operators:
                 with st.expander(namespace):
-                    for op in operators:
-                        op_name = op['metadata']['name']
+                    for operator in operators:
+                        op_name = operator['metadata']['name']
                         if st.button(op_name, key=f"{namespace}_{op_name}"):
-                            ss.selected_operator = op_name
+                            ss.selected_operator_name = op_name
+                            ss.selected_operator = operator
                             ss.selected_namespace = namespace
-                            get_operator_selectors(namespace, op, v1_client)
+                            get_operator_selectors(namespace, operator, v1_client)
+                            
 
     # Show warning if no operators are detected
     if not ss.selected_operator:
@@ -104,10 +115,10 @@ def main():
 
     # Main area: Display information based on the selection
     if ss.selected_operator:
-        st.write(f"You have selected operator: {ss.selected_operator} in namespace {ss.selected_namespace}")
+        st.write(f"You have selected operator: {ss.selected_operator_name} in namespace {ss.selected_namespace}")
         # Integrate rule generation with selected operator
         # generate_prometheus_rule(ss.selected_namespace, ss.rule_labels)
-        generate_prometheus_rule()
+        # generate_prometheus_rule()
 
 
     
@@ -118,7 +129,7 @@ def main():
         ss.get_operators = get_all_operators(ss.namespaces)
 
     generate_button = st.button("Generate", on_click=generate_prometheus_rule)
-    if ss.generated_yaml:
+    if generate_button:
         st.code(body=ss.generated_yaml, language="yaml")
 
 

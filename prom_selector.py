@@ -40,7 +40,6 @@ def get_all_operators(namespaces, custom_objects_client):
 
 
 
-
 def get_prometheus_rule_selector(namespaces, custom_objects_client):
     rule_selectors = {} # Collects all the Prometheus Operators and their rule selectors as a set (namespace, name)
     rule_namespace_selector = {}
@@ -103,7 +102,7 @@ def get_operator_selectors(namespace, operator, v1_client):
 
         all_labels = get_all_namespace_labels(v1_client)
         if inner_dict.items() not in all_labels.items():
-            st.warning(f"Please add the label {inner_dict} to atleast one namespace")
+            ss.no_ns_label = inner_dict
 
     except Exception as e:
         print(f"An error {e} occured while getting operator selectors")
