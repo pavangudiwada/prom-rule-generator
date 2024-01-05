@@ -60,7 +60,7 @@ def main():
 
     v1_client = client.CoreV1Api()
     custom_objects_client = client.CustomObjectsApi()
-    initializer = [("cluster_detected", False), ("rule_selectors", {}), ("rule_namespace_selector", {}), ("namespaces", []), ("rule_labels", {}), ("namespace_labels", {}), ("generated_yaml", {}), ("get_operators", {})]
+    initializer = [("cluster_detected", False), ("rule_selectors", {}), ("rule_namespace_selector", {}), ("namespaces", []), ("rule_labels", {}), ("namespace_labels", {}), ("generated_yaml", {}), ("get_operators", {}), ("no_ns_label", "")]
     for (name,value) in initializer:
         if name not in ss:
             ss[name] = value

@@ -98,11 +98,17 @@ def get_operator_selectors(namespace, operator, v1_client):
             ss.rule_labels = rule_labels["matchLabels"]
         if namespace_labels:
             inner_dict = namespace_labels.get('matchLabels', {})
-            ss.namespace_labels = {"namespace": next(iter(inner_dict.values()), None)}     
+            if inner_dict:
+                ss.namespace_labels = {"namespace": next(iter(inner_dict.values()), None)}
 
-        all_labels = get_all_namespace_labels(v1_client)
-        if inner_dict.items() not in all_labels.items():
-            ss.no_ns_label = inner_dict
+                all_labels = get_all_namespace_labels(v1_client)
+
+                if inner_dict.items() not in all_labels.items():
+                    ss.no_ns_label = inner_dict
+            else:
+                print("No Namespace labels")
+
+
 
     except Exception as e:
         print(f"An error {e} occured while getting operator selectors")

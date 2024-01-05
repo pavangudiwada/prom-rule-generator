@@ -8,7 +8,7 @@ A Python based web application to help with creating PrometheusRule custom resou
 - [x] Add selector labels to YAML by default
 - [ ] Auto-detect multiple Prometheus-Operators
 - [ ] Switch between multiple operators
-- [ ] Check namespaces for `ruleNamespaceSelectors`
+- [x] Check namespaces for `ruleNamespaceSelectors`
 
 ## Try it out
 
