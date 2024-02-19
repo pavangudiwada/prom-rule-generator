@@ -6,7 +6,6 @@ from streamlit import session_state as ss
 
 
 def get_all_namespaces(v1_client):
-
     try:
         namespaces = v1_client.list_namespace() # Get all the namespaces
         ss.cluster_detected = True
@@ -16,44 +15,41 @@ def get_all_namespaces(v1_client):
 
     return [namespace.metadata.name for namespace in namespaces.items] # For each namespaces in the list of namespaces get the name found in metadata.name
 
-def get_all_operators(namespaces, custom_objects_client):
-
-    all_operators = {}
-
+def get_all_prometheuses(namespaces, custom_objects_client):
+    all_prometheus = {}
     for namespace in namespaces:
         try:
-            prometheus_operator = custom_objects_client.list_namespaced_custom_object(
+            prometheus_crs = custom_objects_client.list_namespaced_custom_object(
                 group="monitoring.coreos.com",
                 version="v1",
                 namespace=namespace,
                 plural="prometheuses"
             )
 
-            if prometheus_operator['items']:
+            if prometheus_crs['items']:
 
-                all_operators[namespace] = prometheus_operator['items']
+                all_prometheus[namespace] = prometheus_crs['items']
             
         except Exception as e:
             print(f"An error occurred in namespace {namespace}: {e}")
 
-    return all_operators
+    return all_prometheus
 
 
 
 def get_prometheus_rule_selector(namespaces, custom_objects_client):
-    rule_selectors = {} # Collects all the Prometheus Operators and their rule selectors as a set (namespace, name)
+    rule_selectors = {} # Collects all the Prometheuses and their rule selectors as a set (namespace, name)
     rule_namespace_selector = {}
-
-    for namespace in namespaces: # Get the list of namespaces and try to find a prometheus operator 
+    for namespace in namespaces: # Get the list of namespaces and try to find a prometheus
         try: # This is like running kubectl get prometheuses
-            prometheus_operators = custom_objects_api.list_namespaced_custom_object( 
+            prometheus_instances = custom_objects_api.list_namespaced_custom_object( 
                 group="monitoring.coreos.com",
                 version="v1",
                 namespace=namespace,
                 plural="prometheuses"
             )
 
-            for item in prometheus_operators['items']: # There could be multiple operators, and items has a list of them
+            for item in prometheus_instances['items']: # There could be multiple prometheuses, and items has a list of them
                 name = item['metadata']['name']        # From the metadata part of each item, get its name
                 rule_selector = item.get('spec', {}).get('ruleSelector', {})   # If spec or ruleSelector doesnt exist then {} is used instead of an exception
                 rule_selectors[(namespace, name)] = rule_selector     # If there was a rule 
@@ -67,7 +63,6 @@ def get_prometheus_rule_selector(namespaces, custom_objects_client):
     return rule_selectors, rule_namespace_selector
 
 def get_namespace_labels(namespace, v1_client):
-
     try:
         ns = v1_client.read_namespace(name=namespace)
         return ns.metadata.labels
@@ -77,7 +72,6 @@ def get_namespace_labels(namespace, v1_client):
 
 
 def get_all_namespace_labels(v1_client):
-
     try:
         all_labels = {}
         for namespace in ss.namespaces:
@@ -90,10 +84,14 @@ def get_all_namespace_labels(v1_client):
         print(f"Exception {e} occured while getting all namespace labels")
 
 
-def get_operator_selectors(namespace, operator, v1_client):
+def get_prometheus_selectors(namespace, prometheus, v1_client):
+    ss.namespace_labels = {}
+    ss.rule_labels = {}
+    ss.no_ns_label = {}
+
     try:
-        rule_labels = operator.get('spec', {}).get('ruleSelector', {})
-        namespace_labels = operator.get('spec', {}).get('ruleNamespaceSelector', {})
+        rule_labels = prometheus.get('spec', {}).get('ruleSelector', {})
+        namespace_labels = prometheus.get('spec', {}).get('ruleNamespaceSelector', {})
         if rule_labels:
             ss.rule_labels = rule_labels["matchLabels"]
         if namespace_labels:
@@ -108,8 +106,5 @@ def get_operator_selectors(namespace, operator, v1_client):
             else:
                 print("No Namespace labels")
 
-
-
     except Exception as e:
-        print(f"An error {e} occured while getting operator selectors")
-
+        print(f"An error {e} occured while getting Prometheus selectors")
