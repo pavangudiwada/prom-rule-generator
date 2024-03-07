@@ -1,22 +1,22 @@
-from kubernetes import client, config
 import time
-import streamlit as st
-from streamlit import session_state as ss
+import logging
 
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 
 def get_all_namespaces(v1_client):
     try:
-        namespaces = v1_client.list_namespace() # Get all the namespaces
-        ss.cluster_detected = True
+        namespaces = v1_client.list_namespace() 
     
     except Exception as e:
-        print(f"An error occured while detecting namespaces: {e}")
+        logging.error(f"An error occured while detecting namespaces: {e}")
 
+    logging.info("Sending namespace info")
     return [namespace.metadata.name for namespace in namespaces.items] # For each namespaces in the list of namespaces get the name found in metadata.name
 
 def get_all_prometheuses(namespaces, custom_objects_client):
-    all_prometheus = {}
+    
+    all_prometheus = []
     for namespace in namespaces:
         try:
             prometheus_crs = custom_objects_client.list_namespaced_custom_object(
@@ -25,15 +25,15 @@ def get_all_prometheuses(namespaces, custom_objects_client):
                 namespace=namespace,
                 plural="prometheuses"
             )
-
             if prometheus_crs['items']:
+                all_prometheus.append(prometheus_crs['items'])
 
-                all_prometheus[namespace] = prometheus_crs['items']
-            
         except Exception as e:
-            print(f"An error occurred in namespace {namespace}: {e}")
+            logging.error(f"An error occurred in namespace {namespace}: {e}")
+            return []
 
     return all_prometheus
+
 
 
 
@@ -58,53 +58,54 @@ def get_prometheus_rule_selector(namespaces, custom_objects_client):
                 rule_namespace_selector[(namespace, name)] = rule_namespace
 
         except client.exceptions.ApiException as e:
-            print(f"An error occurred in namespace {namespace}: {e}")
+            logging.warning(f"An error occurred in namespace {namespace}: {e}")
 
     return rule_selectors, rule_namespace_selector
 
-def get_namespace_labels(namespace, v1_client):
+def get_namespace_labels(v1_client, namespace):
     try:
         ns = v1_client.read_namespace(name=namespace)
         return ns.metadata.labels
     except client.exceptions.ApiException as e:
-        print(f"An error occurred: {e}")
+        logging.warning(f"An error occurred: {e}")
         return None
 
 
-def get_all_namespace_labels(v1_client):
+def get_all_namespace_labels(v1_client, namespaces):
     try:
         all_labels = {}
-        for namespace in ss.namespaces:
-            ns_labels = get_namespace_labels(namespace, v1_client)
-
+        for namespace in namespaces:
+            ns_labels = get_namespace_labels(v1_client, namespace)
             if ns_labels:
-                all_labels.update()
+                all_labels.update(ns_labels)
         return all_labels
     except Exception as e:
-        print(f"Exception {e} occured while getting all namespace labels")
+        logging.error(f"Exception {e} occured while getting all namespace labels")
 
 
-def get_prometheus_selectors(namespace, prometheus, v1_client):
-    ss.namespace_labels = {}
-    ss.rule_labels = {}
-    ss.no_ns_label = {}
+def get_prometheus_selectors(v1_client, namespace, prometheus):
+    namespace_labels = {}
+    rule_labels = {}
+    no_ns_label = {}
 
     try:
-        rule_labels = prometheus.get('spec', {}).get('ruleSelector', {})
-        namespace_labels = prometheus.get('spec', {}).get('ruleNamespaceSelector', {})
+        rule_labels = prometheus[0].get('spec', {}).get('ruleSelector', {})
+        namespace_labels = prometheus[0].get('spec', {}).get('ruleNamespaceSelector', {})
         if rule_labels:
-            ss.rule_labels = rule_labels["matchLabels"]
+            rule_labels = rule_labels["matchLabels"]
         if namespace_labels:
             inner_dict = namespace_labels.get('matchLabels', {})
             if inner_dict:
-                ss.namespace_labels = {"namespace": next(iter(inner_dict.values()), None)}
+                namespace_labels = {"namespace": next(iter(inner_dict.values()), None)}
 
                 all_labels = get_all_namespace_labels(v1_client)
 
                 if inner_dict.items() not in all_labels.items():
-                    ss.no_ns_label = inner_dict
+                    no_ns_label = inner_dict
             else:
-                print("No Namespace labels")
+                logging.info("No namespace labels")
 
     except Exception as e:
-        print(f"An error {e} occured while getting Prometheus selectors")
+        logging.error(f"An error {e} occured while getting Prometheus selectors")
+    
+    return namespace_labels, rule_labels, no_ns_label
